@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Billing System</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🛒 Simple Billing System</h1>
+    <p>Select items to generate your bill:</p>
+    
+    <form action="/bill" method="POST">
+      <div class="products">
+        <% products.forEach(product => { %>
+          <div class="product-card">
+            <input type="checkbox" name="items" value="<%= product.id %>" id="p<%= product.id %>">
+            <label for="p<%= product.id %>">
+              <strong><%= product.name %></strong>
+              <span>₹<%= product.price %></span>
+            </label>
+          </div>
+        <% }) %>
+      </div>
+      <button type="submit">Generate Bill</button>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Your Bill</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🧾 Your Bill</h1>
+    <p>Date: <%= date %></p>
+    
+    <table>
+      <tr><th>Item</th><th>Price</th></tr>
+      <% billItems.forEach(item => { %>
+        <tr>
+          <td><%= item.name %></td>
+          <td>₹<%= item.price %></td>
+        </tr>
+      <% }) %>
+      <tr class="total">
+        <td><strong>TOTAL</strong></td>
+        <td><strong>₹<%= total %></strong></td>
+      </tr>
+    </table>
+    
+    <a href="/">← Back to Shopping</a>
+  </div>
+</body>
+</html>
