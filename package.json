@@ -13,5 +13,8 @@
   "dependencies": {
     "ejs": "^4.0.1",
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   }
 }
