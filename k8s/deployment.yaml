@@ -14,7 +14,8 @@ spec:
     spec:
       containers:
       - name: billing-app
-        image: billingappacr.azurecr.io/billing-app:latest
+        image: billingappacr01.azurecr.io/billing-app:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 3000
         readinessProbe:
