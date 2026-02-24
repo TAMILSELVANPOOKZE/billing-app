@@ -11,4 +11,4 @@ RUN ls -la /app        # ← add this line temporarily
 RUN ls -la /app/views  # ← add this line temporarily
 
 EXPOSE 3000
-CMD ["node", "app.js"]
+CMD ["node", "server.js"]
