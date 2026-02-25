@@ -30,9 +30,9 @@ app.post('/bill', (req, res) => {
   res.render('bill', { billItems, total, date: new Date().toLocaleString() });
 });
 
-// Health check (needed for AKS)
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
-});
+// // Health check (needed for AKS)
+// app.get('/health', (req, res) => {
+//   res.json({ status: 'ok' });
+// });
 
 module.exports = app;

@@ -14,14 +14,10 @@ spec:
     spec:
       containers:
       - name: billing-app
-        image: billingappacr01.azurecr.io/billing-app:latest
+        image: billingappacr01.azurecr.io/billing-app
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 3000
 ---
 apiVersion: v1
 kind: Service
