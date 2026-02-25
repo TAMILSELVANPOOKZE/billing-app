@@ -4,11 +4,8 @@ trigger:
       - main
 
 variables:
-  acrName: 'billingappacr01'
   acrLoginServer: 'billingappacr01.azurecr.io'
   imageName: 'billing-app'
-  aksCluster: 'billing-aks'
-  resourceGroup: 'Tamil-RG'
 
 stages:
 
@@ -39,7 +36,7 @@ stages:
 
 
 # ================================
-# STAGE 2: SECURITY SCAN (TRIVY)
+# STAGE 2: SECURITY SCAN
 # ================================
 - stage: SecurityScan
   displayName: 'Security Scan using Trivy'
@@ -89,7 +86,6 @@ stages:
         dockerfile: 'Dockerfile'
         tags: |
           $(Build.BuildId)
-          latest
 
 
 # ================================
@@ -104,20 +100,6 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
 
-    # FIX ImagePullBackOff Automatically
-    - task: AzureCLI@2
-      displayName: 'Attach ACR to AKS'
-      inputs:
-        azureSubscription: 'AzureRMConnection'
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          az aks update \
-            --name $(aksCluster) \
-            --resource-group $(resourceGroup) \
-            --attach-acr $(acrName)
-
-    #  Deploy App to AKS
     - task: KubernetesManifest@0
       displayName: 'Deploy to AKS'
       inputs:
@@ -125,4 +107,5 @@ stages:
         kubernetesServiceConnection: 'AKSServiceConnection'
         namespace: 'default'
         manifests: 'k8s/deployment.yaml'
-        containers: '$(acrLoginServer)/$(imageName):$(Build.BuildId)'
+        containers: |
+          billingappacr01.azurecr.io/billing-app:$(Build.BuildId)
