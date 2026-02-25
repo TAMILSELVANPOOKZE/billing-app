@@ -12,7 +12,9 @@ variables:
 
 stages:
 
-# STAGE 1: Build and Test
+# ================================
+# STAGE 1: BUILD & TEST
+# ================================
 - stage: Build
   displayName: 'Build and Test'
   jobs:
@@ -20,34 +22,40 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps:
+
     - task: NodeTool@0
       inputs:
         versionSpec: '18.x'
       displayName: 'Install Node.js'
 
     - script: npm install
-      displayName: 'Install dependencies'
+      displayName: 'Install Dependencies'
 
     - script: chmod +x node_modules/.bin/jest
-      displayName: 'Fix jest permissions'  
+      displayName: 'Fix Jest Permission'
 
     - script: ./node_modules/.bin/jest --passWithNoTests
-      displayName: 'Run tests'
+      displayName: 'Run Tests'
 
-# STAGE 2: Security Scan with Trivy
+
+# ================================
+# STAGE 2: SECURITY SCAN (TRIVY)
+# ================================
 - stage: SecurityScan
-  displayName: 'Security Scanning'
+  displayName: 'Security Scan using Trivy'
   dependsOn: Build
   jobs:
   - job: TrivyScan
     pool:
       vmImage: 'ubuntu-latest'
     steps:
-    - script: |
-        docker build -t $(imageName):$(Build.BuildId) .
-      displayName: 'Build Docker image'
 
     - script: |
+        docker build -t $(imageName):$(Build.BuildId) .
+      displayName: 'Build Docker Image for Scan'
+
+    - script: |
+        sudo apt-get update
         sudo apt-get install -y wget apt-transport-https gnupg
         wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
         echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
@@ -57,29 +65,36 @@ stages:
 
     - script: |
         trivy image --exit-code 0 --severity HIGH,CRITICAL $(imageName):$(Build.BuildId)
-      displayName: 'Scan image with Trivy'
+      displayName: 'Run Trivy Scan'
 
-# STAGE 3: Push to ACR
+
+# ================================
+# STAGE 3: PUSH TO ACR
+# ================================
 - stage: Containerize
-  displayName: 'Push to ACR'
+  displayName: 'Build & Push Image to ACR'
   dependsOn: SecurityScan
   jobs:
   - job: PushACR
     pool:
       vmImage: 'ubuntu-latest'
     steps:
+
     - task: Docker@2
-      displayName: 'Build and push to ACR'
+      displayName: 'Build and Push Image to ACR'
       inputs:
-        command: buildAndPush
+        command: 'buildAndPush'
         containerRegistry: 'ACRServiceConnection'
-        repository: $(imageName)
+        repository: '$(imageName)'
         dockerfile: 'Dockerfile'
         tags: |
           $(Build.BuildId)
           latest
 
-# STAGE 4: Deploy to AKS
+
+# ================================
+# STAGE 4: DEPLOY TO AKS
+# ================================
 - stage: Deploy
   displayName: 'Deploy to AKS'
   dependsOn: Containerize
@@ -88,11 +103,26 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps:
+
+    # FIX ImagePullBackOff Automatically
+    - task: AzureCLI@2
+      displayName: 'Attach ACR to AKS'
+      inputs:
+        azureSubscription: 'AzureRMConnection'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          az aks update \
+            --name $(aksCluster) \
+            --resource-group $(resourceGroup) \
+            --attach-acr $(acrName)
+
+    #  Deploy App to AKS
     - task: KubernetesManifest@0
       displayName: 'Deploy to AKS'
       inputs:
-        action: deploy
+        action: 'deploy'
         kubernetesServiceConnection: 'AKSServiceConnection'
-        namespace: default
+        namespace: 'default'
         manifests: 'k8s/deployment.yaml'
         containers: '$(acrLoginServer)/$(imageName):$(Build.BuildId)'
