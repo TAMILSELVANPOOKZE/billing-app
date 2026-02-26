@@ -28,7 +28,7 @@ stages:
     - script: npm install
       displayName: 'Install Dependencies'
 
-    - script: ./node_modules/.bin/jest --passWithNoTests
+    - script: npx jest --passWithNoTests
       displayName: 'Run Tests'
 
 # ================================
