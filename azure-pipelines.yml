@@ -87,6 +87,7 @@ stages:
         tags: |
           $(Build.BuildId)
           latest
+        arguments: --platform linux/amd64
 
 
 # ================================
