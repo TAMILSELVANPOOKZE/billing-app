@@ -28,7 +28,10 @@ stages:
     - script: npm install
       displayName: 'Install Dependencies'
 
-    - script: npx jest --passWithNoTests
+    - script: chmod +x node_modules/.bin/jest
+      displayName: 'Fix Jest Permission'
+
+    - script: ./node_modules/.bin/jest --passWithNoTests
       displayName: 'Run Tests'
 
 # ================================
