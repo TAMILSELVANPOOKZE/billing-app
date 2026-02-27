@@ -4,114 +4,75 @@ trigger:
       - main
 
 variables:
+  acrName: 'billingappacr01'
   acrLoginServer: 'billingappacr01.azurecr.io'
   imageName: 'billing-app'
+  tag: '$(Build.BuildId)'
+  aksCluster: 'billing-aks'
+  resourceGroup: 'Tamil-RG'   # <-- change to your RG
 
 stages:
 
-# ================================
-# STAGE 1: BUILD & TEST
-# ================================
+# =========================
+# CI STAGE - Build & Push
+# =========================
 - stage: Build
-  displayName: 'Build and Test'
+  displayName: Build and Push to ACR
   jobs:
-  - job: BuildTest
+  - job: BuildImage
     pool:
       vmImage: 'ubuntu-latest'
-    steps:
 
-    - task: NodeTool@0
-      inputs:
-        versionSpec: '18.x'
-      displayName: 'Install Node.js'
-
-    - script: npm install
-      displayName: 'Install Dependencies'
-
-    - script: chmod +x node_modules/.bin/jest
-      displayName: 'Fix Jest Permission'
-
-    - script: ./node_modules/.bin/jest --passWithNoTests
-      displayName: 'Run Tests'
-
-# ================================
-# STAGE 2: SECURITY SCAN
-# ================================
-- stage: SecurityScan
-  displayName: 'Security Scan using Trivy'
-  dependsOn: Build
-  jobs:
-  - job: TrivyScan
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-
-    - script: |
-        docker build -t $(imageName):$(Build.BuildId) .
-      displayName: 'Build Docker Image for Scan'
-
-    - script: |
-        sudo apt-get update
-        sudo apt-get install -y wget apt-transport-https gnupg
-        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-        echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-        sudo apt-get update
-        sudo apt-get install -y trivy
-      displayName: 'Install Trivy'
-
-    - script: |
-        trivy image --exit-code 0 --severity HIGH,CRITICAL $(imageName):$(Build.BuildId)
-      displayName: 'Run Trivy Scan'
-
-# ================================
-# STAGE 3: BUILD AMD64 & PUSH TO ACR
-# ================================
-- stage: Containerize
-  displayName: 'Build AMD64 Image & Push to ACR'
-  dependsOn: SecurityScan
-  jobs:
-  - job: PushACR
-    pool:
-      vmImage: 'ubuntu-latest'
     steps:
 
     - task: Docker@2
+      displayName: Login to ACR
       inputs:
+        command: login
+        containerRegistry: 'ACRServiceConnection'   # <-- Service connection name
+
+    - task: Docker@2
+      displayName: Build and Push Image
+      inputs:
+        command: buildAndPush
+        repository: $(imageName)
+        dockerfile: Dockerfile
         containerRegistry: 'ACRServiceConnection'
-        command: 'login'
+        tags: |
+          $(tag)
+          latest
 
-    - script: |
-        docker buildx create --use
-        docker buildx inspect --bootstrap
-      displayName: 'Enable Docker Buildx'
 
-    - script: |
-        docker buildx build \
-        --platform linux/amd64 \
-        -t billingappacr01.azurecr.io/billing-app:$(Build.BuildId) \
-        -t billingappacr01.azurecr.io/billing-app:latest \
-        --push .
-      displayName: 'Build AMD64 Image & Push to ACR'
-
-# ================================
-# STAGE 4: DEPLOY TO AKS
-# ================================
+# =========================
+# CD STAGE - Deploy to AKS
+# =========================
 - stage: Deploy
-  displayName: 'Deploy to AKS'
-  dependsOn: Containerize
+  displayName: Deploy to AKS
+  dependsOn: Build
   jobs:
-  - job: DeployAKS
+  - job: DeployToAKS
     pool:
       vmImage: 'ubuntu-latest'
+
     steps:
 
-    - task: KubernetesManifest@1
-      displayName: 'Deploy to AKS'
+    - task: AzureCLI@2
+      displayName: Set AKS Context
       inputs:
-        action: 'deploy'
-        kubernetesServiceConnection: 'AKSServiceConnection'
-        namespace: 'default'
-        manifests: |
-          k8s/deployment.yaml
-        containers: |
-          billingappacr01.azurecr.io/billing-app:$(Build.BuildId)
+        azureSubscription: 'AzureRMConnection'
+        scriptType: bash
+        scriptLocation: inlineScript
+        inlineScript: |
+          az aks get-credentials \
+            --resource-group $(resourceGroup) \
+            --name $(aksCluster) \
+            --overwrite-existing
+
+    - script: |
+        kubectl set image deployment/billing-app \
+        billing-app=$(acrLoginServer)/$(imageName):$(tag)
+      displayName: Update Deployment Image
+
+    - script: |
+        kubectl rollout status deployment/billing-app
+      displayName: Verify Rollout
