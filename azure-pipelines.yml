@@ -38,7 +38,6 @@ stages:
         repository: $(imageName)
         dockerfile: Dockerfile
         containerRegistry: 'ACRServiceConnection'
-        arguments: '--platform linux/amd64'
         tags: |
           $(tag)
           latest
