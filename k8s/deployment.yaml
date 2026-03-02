@@ -13,17 +13,21 @@ spec:
         app: billing-app
     spec:
       containers:
-      - name: billing-app
-        image: billingappacr01.azurecr.io/billing-app:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 3000
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 3000
-          initialDelaySeconds: 10
-          periodSeconds: 5
+        - name: billing-app
+          image: billingappacr01.azurecr.io/billing-app:$(tag)
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+
 ---
 apiVersion: v1
 kind: Service
@@ -34,5 +38,6 @@ spec:
   selector:
     app: billing-app
   ports:
-  - port: 80
-    targetPort: 3000
+    - protocol: TCP
+      port: 80
+      targetPort: 3000

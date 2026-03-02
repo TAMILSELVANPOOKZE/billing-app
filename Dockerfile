@@ -1,14 +1,20 @@
+# Use lightweight Node image
 FROM node:18-alpine
 
+# Set working directory
 WORKDIR /app
 
+# Copy package files first (for caching)
 COPY package*.json ./
-RUN npm install --production
 
+# Install only production dependencies
+RUN npm install --omit=dev
+
+# Copy remaining app files
 COPY . .
 
-RUN ls -la /app        # ← add this line temporarily
-RUN ls -la /app/views  # ← add this line temporarily
-
+# Expose port (important for AKS)
 EXPOSE 3000
-CMD ["node", "server.js"]
+
+# Start the app
+CMD ["npm", "start"]
