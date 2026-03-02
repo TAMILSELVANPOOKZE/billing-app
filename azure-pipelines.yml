@@ -24,7 +24,7 @@ stages:
         dockerfile: Dockerfile
         containerRegistry: ACRServiceConnection
         tags: |
-          $(tag)
+          latest
 
 - stage: Deploy
   displayName: Deploy to AKS
